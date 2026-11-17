@@ -56,6 +56,9 @@ public class AuthController {
     @Value("${app.google.client-id:}")
     private String googleClientId;
 
+    @Value("${app.google.client-secret:}")
+    private String googleClientSecret;
+
     private final SecureRandom secureRandom = new SecureRandom();
 
     @PostMapping("/login")
@@ -173,82 +176,6 @@ public class AuthController {
 
         generateAndSendOtp(email);
         return ResponseEntity.ok(Map.of("message", "OTP sent."));
-    }
-
-    @PostMapping("/send-login-otp")
-    public ResponseEntity<?> sendLoginOtp(@RequestBody Map<String, String> payload) {
-        String email = payload.get("email");
-        if (email == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email is required."));
-        }
-
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "No account found with this email."));
-        }
-        
-        Optional<OtpToken> existingOtp = otpRepository.findByEmail(email);
-        if (existingOtp.isPresent()) {
-            if (existingOtp.get().getCreatedAt().plusSeconds(60).isAfter(LocalDateTime.now())) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Please wait before requesting a new OTP."));
-            }
-        }
-
-        generateAndSendOtp(email);
-        return ResponseEntity.ok(Map.of("message", "Login OTP sent."));
-    }
-
-    @PostMapping("/login-with-otp")
-    public ResponseEntity<?> loginWithOtp(@RequestBody Map<String, String> payload) {
-        String email = payload.get("email");
-        String otp = payload.get("otp");
-
-        if (email == null || otp == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email and OTP are required."));
-        }
-
-        Optional<OtpToken> otpOpt = otpRepository.findByEmail(email);
-        if (otpOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Invalid or expired OTP."));
-        }
-
-        OtpToken otpToken = otpOpt.get();
-        if (otpToken.getAttempts() >= 5) {
-            otpRepository.delete(otpToken);
-            return ResponseEntity.badRequest().body(Map.of("message", "Too many attempts. Please request a new OTP."));
-        }
-
-        if (otpToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            otpRepository.delete(otpToken);
-            return ResponseEntity.badRequest().body(Map.of("message", "OTP expired. Please request a new code."));
-        }
-
-        if (!passwordEncoder.matches(otp, otpToken.getOtpHash())) {
-            otpToken.setAttempts(otpToken.getAttempts() + 1);
-            otpRepository.save(otpToken);
-            return ResponseEntity.badRequest().body(Map.of("message", "Invalid verification code."));
-        }
-
-        // OTP is correct
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "No account found with this email."));
-        }
-
-        User user = userOpt.get();
-        if (!user.isVerified()) {
-            user.setVerified(true);
-            userRepository.save(user);
-        }
-
-        otpRepository.delete(otpToken);
-
-        // Generate JWT
-        Authentication authentication = new UsernamePasswordAuthenticationToken(user.getUsername(), null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = tokenProvider.generateToken(authentication);
-
-        return ResponseEntity.ok(new AuthResponse(jwt));
     }
 
     @PostMapping("/google")

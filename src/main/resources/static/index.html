@@ -47,10 +47,6 @@
                     <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
                 </div>
                 <button class="btn" style="width: 100%; padding: 0.85rem; margin-top: 1rem;" onclick="login()">Login to Dashboard</button>
-                
-                <p style="margin-top: 1.0rem; font-size: 0.9rem;">
-                    Prefer email? <a href="#" onclick="toggleForm('login-otp-request')">Login with Email OTP</a>
-                </p>
 
                 <div style="margin: 1.5rem 0; color: var(--text-secondary); font-size: 0.9rem; position: relative; text-align: center;">
                     <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); position: absolute; width: 100%; top: 50%; z-index: 1;">
@@ -113,52 +109,22 @@
                     <button class="btn" style="width: 100%; padding: 0.6rem; margin-top: 1rem;" onclick="toggleForm('login')">Continue to Login</button>
                 </div>
             </div>
-
-            <div id="login-otp-request-form" class="hidden fade-in">
-                <h2 style="margin-bottom: 1.5rem;">Login with OTP</h2>
-                <div class="form-group">
-                    <input type="email" id="login-otp-email" placeholder="Email Address" autocomplete="email">
-                </div>
-                <button class="btn" style="width: 100%; padding: 0.85rem; margin-top: 1rem;" onclick="sendLoginOtp()">Send OTP</button>
-                <p style="margin-top: 1.5rem; font-size: 0.9rem;">
-                    <a href="#" onclick="toggleForm('login')">Back to Password Login</a>
-                </p>
-                <div id="login-otp-request-message" style="margin-top: 1rem; font-size: 0.9rem; font-weight: 500;"></div>
-            </div>
-
-            <div id="login-otp-verify-form" class="hidden fade-in">
-                <h2 style="margin-bottom: 1.5rem;">Enter Login OTP</h2>
-                <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">We sent a login code to your email.</p>
-                <div class="form-group">
-                    <input type="text" id="login-otp-code" placeholder="Enter OTP (6 digits)" autocomplete="one-time-code">
-                </div>
-                <button class="btn" style="width: 100%; padding: 0.85rem; margin-top: 1rem;" onclick="verifyLoginOtp()">Login</button>
-                <p style="margin-top: 1.5rem; font-size: 0.9rem;">
-                    <a href="#" onclick="toggleForm('login-otp-request')">Back</a>
-                </p>
-                <div id="login-otp-verify-message" style="margin-top: 1rem; font-size: 0.9rem; font-weight: 500;"></div>
-            </div>
         </div>
     </div>
 
     <script src="api.js"></script>
     <script>
         let currentRegisterEmail = '';
-        let currentLoginEmail = '';
 
         function toggleForm(formType) {
             document.getElementById('login-form').classList.add('hidden');
             document.getElementById('register-form').classList.add('hidden');
             document.getElementById('otp-form').classList.add('hidden');
-            document.getElementById('login-otp-request-form').classList.add('hidden');
-            document.getElementById('login-otp-verify-form').classList.add('hidden');
 
             document.getElementById(formType + '-form').classList.remove('hidden');
             document.getElementById('login-error').innerText = '';
             document.getElementById('reg-message').innerText = '';
             document.getElementById('otp-message').innerText = '';
-            document.getElementById('login-otp-request-message').innerText = '';
-            document.getElementById('login-otp-verify-message').innerText = '';
             document.getElementById('otp-success-panel').style.display = 'none';
         }
 
@@ -302,54 +268,6 @@
                 const msg = document.getElementById('otp-message');
                 msg.style.color = 'var(--danger)';
                 msg.innerText = e.message || 'Failed to resend OTP';
-            }
-        }
-
-        async function sendLoginOtp() {
-            const email = document.getElementById('login-otp-email').value;
-            const msg = document.getElementById('login-otp-request-message');
-            msg.style.color = 'var(--danger)';
-
-            if(!email) {
-                msg.innerText = 'Please enter your email';
-                return;
-            }
-
-            try {
-                const res = await apiRequest('/auth/send-login-otp', {
-                    method: 'POST',
-                    body: JSON.stringify({email})
-                });
-                msg.style.color = 'var(--success)';
-                msg.innerText = res.message || 'Login OTP sent.';
-                currentLoginEmail = email;
-                setTimeout(() => toggleForm('login-otp-verify'), 1500);
-            } catch (e) {
-                msg.style.color = 'var(--danger)';
-                msg.innerText = e.message || 'Failed to send OTP';
-            }
-        }
-
-        async function verifyLoginOtp() {
-            const otp = document.getElementById('login-otp-code').value;
-            const msg = document.getElementById('login-otp-verify-message');
-            msg.style.color = 'var(--danger)';
-
-            if(!otp) {
-                msg.innerText = 'Please enter the OTP';
-                return;
-            }
-
-            try {
-                const res = await apiRequest('/auth/login-with-otp', {
-                    method: 'POST',
-                    body: JSON.stringify({email: currentLoginEmail, otp})
-                });
-                setToken(res.token);
-                window.location.href = '/dashboard.html';
-            } catch (e) {
-                msg.style.color = 'var(--danger)';
-                msg.innerText = e.message || 'Invalid OTP';
             }
         }
     </script>
